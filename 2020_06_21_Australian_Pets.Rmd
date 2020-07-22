@@ -1,0 +1,83 @@
+---
+title: "2020_06_21 Australian Pets"
+author: "Juliette Verstaen"
+date: "7/21/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Read in Data
+
+```{r}
+
+library(tidyverse)
+library(janitor)
+library(hrbrthemes)
+
+animal_outcomes <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-07-21/animal_outcomes.csv')
+animal_complaints <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-07-21/animal_complaints.csv') %>% janitor::clean_names()
+brisbane_complaints <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-07-21/brisbane_complaints.csv')
+
+```
+
+Explore animal_outcomes
+```{r}
+unique(animal_outcomes$animal_type)
+unique(animal_outcomes$year)
+unique(animal_outcomes$outcome)
+
+class(animal_outcomes$outcome)
+```
+
+Animals:
+Dogs, Cats, Horses, Livestock, Wildlife, Other Animals
+
+Time Frame: 1999-2018
+Outcomes: Reclaimed, Rehomed, Other, Euthanized, Released, In Stock, Transferred, Currently In Care
+
+```{r}
+library(ggtext)
+
+colors <- c("#ECCBAD", "#246C9A", "#D69C4E", "#AADDDE", "#E64E46")
+
+animal_outcomes_wrangle <- animal_outcomes %>% 
+  mutate(outcome = ifelse(outcome == "In Stock", "Currently In Care", outcome)) %>% 
+  filter(outcome != "Other",
+         animal_type != "Other Animals") %>% 
+  mutate(outcome = factor(outcome, levels = c("Currently In Care", "Transferred", "Reclaimed", "Rehomed", "Released", "Euthanized")))
+
+
+##plot
+plot <- ggplot(animal_outcomes_wrangle) +
+  geom_line(aes(x = year, y = Total, color = animal_type), size = 1) +
+  facet_grid(rows = vars(outcome), scales = "free_y", labeller =label_wrap_gen(10)) +
+  labs(y = "", x = "",
+       title = "Number of <b style='color:#ECCBAD'>cats,</b> <b style='color:#246C9A'>dogs,</b> <b style='color:#D69C4E'>horses,</b> <b style='color:#AADDDE'>livestock,</b> and <b style='color:#E64E46'>wildlife</b> during different shelter outcomes",
+       caption = "Data: Australia RSPCA \nFigure by @JVerstaen for #TidyTuesday")+
+  theme_ft_rc() +
+  scale_colour_manual(values = colors, aesthetics = "colour") +
+  theme(plot.title = element_markdown(hjust = .3),
+        legend.position = "none",
+        strip.text = element_text(size = 8, color = "white"),
+        plot.caption=element_text(hjust = 0))
+
+
+ggsave("graphs/2020_07_21_australia_pets.jpg",width = 10, height = 7, dpi=300)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
