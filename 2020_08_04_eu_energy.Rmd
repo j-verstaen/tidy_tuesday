@@ -1,0 +1,169 @@
+---
+title: "Tidy Tuesday European Energy"
+author: "Juliette Verstaen"
+date: "8/4/2020"
+output: html_document
+---
+
+Summary: Creating TidyTuesday graphs. I chose to focus on clean versus conventional energy. The finale figure is two plots, one showing the proportion of clean energy each year for each country, and the second showing the total amount of clean energy for all years by country.
+
+Data source: Eurostat Energy
+---
+
+## Load data and packages
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+## data
+energy_types <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-08-04/energy_types.csv')
+country_totals <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-08-04/country_totals.csv')
+
+## packages
+library(tidyverse)
+library(ggplot2)
+library(hrbrthemes)
+library(ggrepel)
+#devtools::install_github("JoeyStanley/futurevisions")
+library(futurevisions)
+library(scales)
+library(patchwork)
+```
+
+
+## Explore the data
+
+```{r explore data}
+## What countries are included and how many? 
+unique(energy_types$country_name)
+
+## it was clarified that everything is included in level 1, and that summing level 1 and 2 would be over estimating
+unique(energy_types$levels)
+
+## How many types? 
+unique(energy_types$type)
+```
+
+- There are 37 countries in this data set
+- UK country name is NA, so will need to fix that 
+
+- There are 7 types of energy:
+(non-renewable)
+1. Conventional thermal 
+(renewable)
+2. Nuclear
+3. Hydro
+4. Pumped hydro power
+5. Wind 
+6. Solar
+7. Geothermal
+8. Other (I am assuming here that other will fall in renewable category. Couldn't figure it out for sure, but the total energy in this category is small anyways)
+
+
+
+Find the color palette I like and use it to create a discrete color pallet with enough colors for all countries
+```{r palette}
+show_palette("pegasi")
+mycolors <- colorRampPalette(futurevisions("pegasi"))(37)
+show_col(mycolors)
+```
+
+Create plot 1: proportion clean energy 
+```{r wrangle data_1}
+
+data_1 <- energy_types %>% 
+  filter(level == "Level 1") %>% 
+  mutate(country_name = ifelse(country == "UK", "United Kingdom", country_name)) %>% 
+  pivot_longer(cols = c(`2016`, `2017`, `2018`), names_to = "year", values_to = "net_production") %>%
+  mutate(category = case_when(type %in% c("Nuclear", "Hydro", "Pumped hydro power", "Wind", "Solar", "Geothermal", "Other")~ "clean", 
+                                          T ~ "conventional")) %>% 
+  group_by(country_name, year, category) %>% 
+  dplyr::summarize(net_production = sum(net_production)) %>% 
+  ungroup() %>% 
+  group_by(country_name, year) %>% 
+  mutate(total_prod = sum(net_production)) %>% 
+  ungroup() %>% 
+  rowwise() %>% 
+  mutate(percent = net_production/total_prod*100) %>% 
+  filter(category == "clean") %>% 
+  ungroup() %>% 
+  mutate(country_name = ifelse(country_name == "Bosnia & Herzegovina", "Bosnia &\nHerzegovina", country_name))
+
+```
+
+```{r create plot_1}
+
+## grab which data points we want the final labels to be on
+last_lab  <- data_1 %>% 
+  filter(year == 2018)
+
+## make plot
+plot_1 <- ggplot(data_1, aes(x = year, y = percent, color = country_name)) + 
+  geom_point(size = 2.5) + 
+  geom_line(aes(group = country_name))+ 
+  labs(y ="",
+       x = "",
+       title = "Percent of net clean energy production",
+       subtitle = " Out of all net energy production") +
+  theme_ipsum_rc() + 
+  geom_text_repel(aes(label=country_name),
+                  data = last_lab,
+                 # nudge_x= 20 ,
+                  force= 0.5,
+                  hjust= -1,
+                  direction = "y",
+                  size = 3,
+                  segment.color = "transparent") +
+  theme(legend.position = "none") +
+  scale_color_manual(values = mycolors)
+
+plot_1 
+
+```
+
+Create plot 2: total clean energy 
+```{r wrangle data_2}
+
+## grab the order of countries from the other plot
+order_countries_df <- data_1 %>% 
+  filter(year == 2018) %>% 
+  select(country_name,percent) %>%
+  arrange(percent)
+
+order_countries <- c(order_countries_df$country_name)
+
+## create df 2
+data_2 <- data_1 %>% 
+  group_by(country_name) %>% 
+  dplyr::summarise(total_clean = sum(net_production)) %>% 
+  ungroup() %>% 
+  mutate(country_name = factor(country_name, levels = order_countries),
+         total_clean_k = total_clean/1000)
+
+```
+
+```{r create plot_2}
+
+plot_2 <- ggplot(data_2) +
+  geom_col(aes(x = total_clean_k, y = country_name, fill = country_name))+
+   theme_ipsum_rc() +
+  labs(y = "", x = "Clean Energy KGWh (Thousand Gigawatt hours)",
+       title = "Net clean energy production",
+       subtitle = "Sum of 2016-2018",
+       caption = "Data: Eurostat Energy \n Figure by @JVerstaen for #TidyTuesday") +
+  ## there must be an easier way, but I just wanna finish this ! 
+  scale_fill_manual(values = c("Albania" = "#562F34", "Norway" = "#395F84", "Sweden" = "#6D6357", "France" = "#E86E3B", "Georgia" = "#F1873B", "Luxembourg" = "#799475", "Slovakia" = "#2C333B", "Austria" = "#6C312B", "Lithuania" ="#979E6A", "Slovenia" ="#303030", "Croatia" ="#D8353A", "Ukraine" = "#A99783", "Romania" = "#2F4260", "Montenegro" = "#5A8281", "Finland" = "#ED5E3C", "Spain" = "#4E4945", "Belgium" = "#8A3137", "Hungary" = "#F2C051", "Bulgaria" = "#BF3439", "Denmark" = "#E64B37", "Portugal" = "#304D6F", "Bosnia & Herzegovina" = "#A43033", "Germany" = "#EE953B", "United Kingdom" = "#CBAF97", "Czechia" = "#E2443B", "Latvia" = "#ABAE5F", "North Macedonia" = "#436882", "Italy" = "#C6BB52", "Serbia" = "#2E4148", "Turkey" = "#8D7C6C", "Ireland" = "#E0C746", "Greece"= "#EDAF42", "Netherlands" ="#4E747F", "Poland"= "#305581", "Cyprus"="#E03C3A", "Estonia"="#E95338", "Malta"="#64887C")) +
+  theme(legend.position = "none",
+        axis.text.y = element_text(size = 8))
+
+plot_2
+
+```
+
+Put together and save
+```{r final figure}
+combo <-  plot_1 + plot_2  
+
+ggsave("graphs/2020_08_04_eu_energy.jpg", width = 11, height = 13, dpi=300) 
+```
+
