@@ -1,0 +1,88 @@
+---
+title: "Tidy Tuesday Avatar the Last Airbender"
+author: "Juliette Verstaen"
+date: "8/11/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Get the data and load packages
+```{r}
+## data
+avatar_raw <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-08-11/avatar.csv')
+scene_description <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-08-11/scene_description.csv')
+
+## libraries
+library(tidyverse)
+library(ggplot2)
+library(scales)
+#devtools::install_github("Ryo-N7/tvthemes")
+library(tvthemes)
+library(tm)
+library(tidytext)
+library(textdata)
+library(ggtext)
+
+```
+
+Choose the characters we want to look at and do the sentiment analysis.
+```{r}
+avatar <- avatar_raw %>% 
+  filter(character %in% c("Katara", "Sokka", "Zuko", "Aang" )) %>%
+  dplyr::select(book, book_num, chapter_num, character, full_text) %>% 
+  separate_rows(full_text, sep = " ") %>% 
+  mutate(full_text = tm::removePunctuation(full_text),
+         full_text = tolower(full_text)) %>% 
+  rename(word = full_text) %>% 
+  group_by(book, book_num, chapter_num, character) %>% 
+  inner_join(get_sentiments("afinn"), by = "word") %>% 
+  ungroup()
+
+avatar_scores <- avatar %>% 
+  group_by(book, book_num, chapter_num, character) %>% 
+  dplyr::summarise(avg_score = mean(value)) %>% 
+  ungroup() %>% 
+  mutate(book = factor(book, levels = c("Water", "Earth", "Fire")))
+```
+
+Create the plot
+```{r}
+
+colors <- c("#0047AB", "#015E05",  "#A10000")
+  
+ggplot(na.omit(avatar_scores), aes(x = character, y = avg_score, color = book)) +
+  geom_boxplot(position=position_dodge(0.8), fill = "transparent")+
+  geom_jitter(position=position_dodge(0.8), size = 2)+
+  
+  theme_avatar() +
+  
+  labs(y = "Score (episode average)", x = " ",
+       title = "Sentiment Analysis in Avatar the Last Airbender",
+       subtitle = "<b style='color:#0047AB'>Water,</b> <b style='color:#015E05'>Earth,</b> and <b style='color:#A10000'>Fire</b> books",
+       caption = "Data: 'appa' R package created by Avery Robbins\nFigure by @JVerstaen for #TidyTuesday") +
+  
+  
+  scale_color_manual(values = colors)+
+  
+  theme(plot.title = element_text(size = 20, hjust = 0.5),
+        plot.subtitle = element_markdown(size = 17, hjust = 0.5),
+        legend.position = "none",
+        axis.text.x = element_text(size = 14),
+        axis.text.y = element_text(size = 10))
+ 
+ggsave("graphs/2020_08_11_avatar.jpg",width = 10, height = 7, dpi=300) 
+```
+
+
+
+
+
+
+
+
+
+
+
