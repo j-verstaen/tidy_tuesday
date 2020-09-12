@@ -1,0 +1,149 @@
+---
+title: "Tidy Tuesday Chopped"
+author: "Juliette Verstaen"
+date: "8/25/2020"
+output: html_document
+---
+
+Tidy Tuesday viz using Friends data.
+https://github.com/rfordatascience/tidytuesday/blob/master/data/2020/2020-09-08/readme.md
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(here)
+#library(friends)
+library(cowplot)
+extrafont::loadfonts( quiet = T)
+
+theme_set(hrbrthemes::theme_ipsum_rc(base_family = "Gabriel Weiss' Friends Font"))
+theme_update(panel.background = element_rect(fill = NA, color = NA),
+             panel.border = element_rect(fill = NA, color = NA),
+             panel.grid.major.y = element_blank(),
+             panel.grid.major.x = element_blank(),
+             panel.grid.minor = element_blank(),
+             axis.text.x = element_blank(),
+             axis.text.y = element_text(size = 13),
+             axis.ticks = element_blank(),
+             axis.title.y = element_text(size = 15, 
+                                         margin = margin(r = 10),
+                                         hjust = 0.5,
+                                         face = 'bold'),
+             plot.margin = margin(10, 25, 10, 25))
+
+friends_lines_raw <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-08/friends.csv')
+friends_emotions_raw <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-08/friends_emotions.csv')
+friends_info_raw <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-08/friends_info.csv')
+
+```
+
+
+Who's the most exclamation and inquisitive?
+```{r}
+df <- friends_lines_raw %>% 
+  filter(speaker %in% c("Monica Geller", "Rachel Green", "Phoebe Buffay", "Ross Geller", "Chandler Bing", "Joey Tribbiani")) %>% 
+  mutate(exclaim = str_count(text, "!"),
+         quest = str_count(text, pattern = "\\?")) %>% 
+  group_by(speaker, season, episode) %>% 
+  dplyr::summarise(exclaimation = sum(exclaim),
+                   question = sum(quest)) %>% 
+  unite(col = "season.ep", c("season", "episode"), sep = ".", remove = FALSE) %>% 
+  ungroup()  %>% 
+  filter(speaker == "Chandler Bing") %>% 
+  arrange(season, episode) %>%
+  mutate(season = factor(season),
+         rn = row_number()) %>% 
+  group_by(season) %>% 
+  mutate(avg_ex = mean(exclaimation),
+         avg_ques = mean(question),
+         start = min(rn),
+         end = max(rn),
+         median = median(rn)) %>% 
+  ungroup()
+  
+  
+ggplot(df) +
+  geom_point(aes(x = season.ep, y = exclaimation, color = speaker)) +
+  facet_grid(vars(speaker))
+
+ggplot(df) +
+  geom_point(aes(x = season.ep, y = question, color = speaker)) + 
+  facet_grid(vars(speaker))
+
+  
+```
+
+
+```{r}
+p <- ggplot(df) +
+  geom_point(aes(x = season.ep,
+                 y = exclaimation,
+                 color = season),
+                 #color = after_scale(colorspace::darken(color, .3))),
+             size = 2) +
+    geom_label(aes(label = glue::glue('Season {season}'),
+                 x = median,
+                 y = 10.1,
+                 color = season), 
+             family = "Gabriel Weiss' Friends Font",
+             fontface = 'bold',
+             label.padding = unit(.3, "lines"),
+             label.r = unit(.25, "lines"),
+             label.size = .8,
+             size = 5) 
+  
+  
+  
+  geom_segment(aes(y = avg_rating, 
+                   yend = avg_rating, 
+                   x = start, 
+                   xend = end,
+                   color = season,
+                   color = after_scale(colorspace::darken(color, .1))), 
+               lwd = 2.5) +
+  geom_segment(aes(y = imdb_rating, 
+                   yend = avg_rating,
+                   x = rn, 
+                   xend = rn,
+                   color = season,
+                   color = after_scale(colorspace::darken(color, .3)))) +
+  geom_segment(data = df_lines,
+               aes(x = end, 
+                   xend = lag_rn,
+                   y = s_avg,
+                   yend = lag_rating,
+                   color = season,
+                   color = after_scale(colorspace::darken(color, .3))),
+               lwd = .7) +
+  
+
+  scale_x_continuous(expand = c(.005, .005)) +
+  scale_y_continuous(breaks = seq(7, 10, by = .5), 
+                     limits = c(7, 10.2),
+                     sec.axis = dup_axis(name = NULL)) +
+  scale_color_brewer(palette = 'Set3') +
+  labs(title = 'Friends - All Episodes Ratings by IMDB',
+       subtitle = 'The line represents the distance to the seasons average rating',
+       caption = 'Visualization by Pedro Toledo • Data from {friends} by Emil Hvitfeldt',
+       y = 'IMDB Rating',
+       x = NULL) +
+  guides(color = FALSE) +
+  theme(plot.title = element_text(size = rel(2), hjust = 0.5),
+        plot.subtitle = element_text(family = "Gabriel Weiss' Friends Font",size = rel(1.2), hjust = 0.5),
+        plot.caption = element_text(size = rel(1)))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+

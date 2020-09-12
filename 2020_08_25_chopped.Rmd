@@ -1,0 +1,89 @@
+---
+title: "Tidy Tuesday Chopped"
+author: "Juliette Verstaen"
+date: "8/25/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+#devtools::install_github("gadenbuie/ggpomological")
+library(ggpomological)
+library(extrafont)
+extrafont::font_import()
+install.packages("showtext")
+library(showtext)
+font_add_google(name = "Amatic SC", family = "amatic-sc")
+
+
+chopped_raw <- readr::read_tsv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-08-25/chopped.tsv')
+
+```
+
+```{r}
+
+chop <- chopped_raw %>% 
+  select(air_date, appetizer, entree, dessert) %>% 
+  separate(air_date, into = c("date", "year"), sep = ", ") %>% 
+  dplyr::select(-date) 
+
+fruit_list <- c("dragon fruit", "dried apricots", "dried strawberries", "guava", "cranberries", "mangoes", "cherries", "papaya", "passion fruit", "raspberries", "bananas", "blood oranges", "pineapple", "plums", "peaches", "rambutan", "strawberries", "blueberries", "figs", "blackberries")
+  
+dessert <- chop %>% 
+  select(year, dessert_ingrediant = dessert) %>% 
+  separate_rows(dessert_ingrediant, sep = ", ") %>% 
+  count(dessert_ingrediant) %>% 
+  filter(n >4) %>% 
+  rename(count= n) %>% 
+  #mutate(count = as.numeric(count)) %>% 
+  dplyr::arrange(count) %>% 
+  mutate(dessert_ingrediant = as.character(dessert_ingrediant),
+         dessert_ingrediant = factor(dessert_ingrediant, levels = c(dessert$dessert_ingrediant)),
+         fruit = ifelse(dessert_ingrediant %in% fruit_list, "yes","no"))
+
+
+
+```
+Repeat offenders! 
+
+
+```{r}
+a <- ifelse(dessert$fruit == "yes", "blue", "red")
+
+
+hist <- ggplot(dessert) +
+  geom_col(aes(x = count, y = dessert_ingrediant, fill = fruit))+
+  labs(title = "TEST") +
+  theme(text=element_text(size=16, family="Impact"))
+
+hist
+
+
+fonttable()
+fonts()
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+Make the word cloud
+
+```{r}
+set.seed(1234) # for reproducibility 
+
+dessert_cloud <- wordcloud(words = dessert$dessert, freq = dessert$n, min.freq = 6,  max.words=200, random.order=FALSE, rot.per=0.35, colors=brewer.pal(8, "Dark2"))
+
+```
+
