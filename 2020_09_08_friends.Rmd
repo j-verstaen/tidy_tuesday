@@ -1,5 +1,5 @@
 ---
-title: "Tidy Tuesday Chopped"
+title: "Tidy Tuesday Friends"
 author: "Juliette Verstaen"
 date: "8/25/2020"
 output: html_document
