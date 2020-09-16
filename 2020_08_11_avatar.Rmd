@@ -73,7 +73,7 @@ ggplot(na.omit(avatar_scores), aes(x = character, y = avg_score, color = book)) 
         axis.text.x = element_text(size = 14),
         axis.text.y = element_text(size = 10))
  
-ggsave("graphs/2020_08_11_avatar.jpg",width = 10, height = 7, dpi=300) 
+ggsave("visualizations/2020_08_11_avatar.jpg",width = 10, height = 7, dpi=300) 
 ```
 
 

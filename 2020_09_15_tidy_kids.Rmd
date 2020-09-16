@@ -103,7 +103,7 @@ animate <- plot +
   gganimate::transition_time(year) 
 
 animate(animate, fps = 3, height = 800, width =800)
-anim_save("graphs/2020_09_15_govspend.gif")
+anim_save("visualizations/2020_09_15_govspend.gif")
   
 ```
 
