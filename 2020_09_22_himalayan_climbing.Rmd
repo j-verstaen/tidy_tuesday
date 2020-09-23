@@ -1,0 +1,91 @@
+---
+title: "2020_09_22 Himalayan Climbing Expeditions"
+author: "Juliette Verstaen"
+date: "7/21/2020"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Read in Data
+```{r}
+
+library(tidyverse)
+library(hrbrthemes)
+library(scales)
+library(treemap)
+library(treemapify)
+
+expeditions_raw <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-22/expeditions.csv')
+
+```
+
+
+colors
+```{r}
+devtools::install_github("katiejolly/nationalparkcolors")
+library("nationalparkcolors")
+pal <- park_palette("GeneralGrant")
+more_pal <- colorRampPalette(pal)(13)
+show_col(more_pal)
+```
+
+wrangle
+```{r}
+terminations <- expeditions_raw %>% 
+  group_by(season, termination_reason) %>% 
+  count() %>% 
+  ungroup() %>% 
+  rename(number = n) %>% 
+  filter(season != "Unknown") %>% 
+  ungroup() %>% 
+  mutate(short_termination_reason = ifelse(termination_reason == "Accident (death or serious injury)", "accident",
+                                          ifelse(termination_reason == "Bad conditions (deep snow, avalanching, falling ice, or rock)", "bad conditions",
+                                                 ifelse(termination_reason == "Bad weather (storms, high winds)", "bad weather",
+                                                        ifelse(termination_reason == "Lack (or loss) of supplies or equipment", "lack of supplies",
+                                                               ifelse(termination_reason =="Route technically too difficult, lack of experience, strength, or motivation", "route too difficult", 
+                                                                      ifelse( termination_reason == "Illness, AMS, exhaustion, or frostbite", "personal ailment", 
+                                                                              ifelse(termination_reason == "Did not attempt climb", "no attempt",
+                                                                                     ifelse(str_detect(termination_reason, "Success"), "success",
+                                                                                            ifelse(termination_reason == "Did not reach base camp", "did not\n reach \nbase camp", termination_reason)))))))))) %>% 
+  mutate(short_termination_reason = tolower(short_termination_reason)) %>%  
+  mutate(success = ifelse(str_detect(termination_reason, "Success"), "success", "fail")) %>% 
+  group_by(success, short_termination_reason) %>% 
+  dplyr::summarise(counts = sum(number)) %>% 
+  ungroup() %>% 
+  mutate(short_termination_reason = ifelse(short_termination_reason == "success", "goal summit achieved!", short_termination_reason))
+  
+
+
+```
+
+plot
+```{r}
+
+ggplot(fails_success, aes(area = counts, 
+                  fill = short_termination_reason,
+             subgroup = success, label = short_termination_reason))+
+  # add the tree map and add borders between countries
+  geom_treemap(color = "#252A32") + 
+  geom_treemap_subgroup_border(color = "#252A32", lwd=5) +
+  scale_fill_manual(values = more_pal)+
+  geom_treemap_text(colour = "white", place = "center", reflow = FALSE, size = 15) +
+  geom_treemap_subgroup_text(col = 'black', alpha = 0.5, 
+                             grow = TRUE, padding.y = grid::unit(3, "mm"),padding.x = grid::unit(3, "mm")) +
+  labs(title = "Climbing in the Himalayas, not for the faint of heart!",
+       subtitle = "Proportion of termination reasons (successes and fails) from 1905 - 2019\n Visualization by @JVerstaen for #TidyTuesday | Data from The Himalayan Database") +
+  theme_ft_rc() +
+  theme(legend.position = "none",
+        plot.title = element_text(size = 45, hjust = 0.5),
+        plot.subtitle = element_text(size = 20, hjust = 0.5),
+        ) 
+
+ggsave("visualizations/2020_09_22_climbing.jpg",width = 15, height = 10, dpi=300) 
+```
+
+
+
