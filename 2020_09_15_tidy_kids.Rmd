@@ -1,0 +1,115 @@
+---
+title: "2020_09_15 Government Spending On Kids"
+author: "Juliette Verstaen"
+date: "7/21/2020"
+output: html_document
+---
+
+Used this tutorial!
+https://evamaerey.github.io/little_flipbooks_library/racing_bars/racing_barcharts.html#3
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Read in Data
+```{r}
+
+library(tidyverse)
+library(hrbrthemes)
+library(gganimate) 
+library(futurevisions)
+library(scales)
+
+kids <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-15/kids.csv') %>% 
+  filter(variable %in% c("PK12ed", "highered", "socsec", "pubhealth", "HCD", "lib", "parkrec")) %>%
+  select(state, year, variable, inf_adj, inf_adj_perchild) 
+
+```
+
+To make the static plot we need to assigning state rankings within each year 
+```{r}
+ranked_by_year <- kids %>%  
+  filter(variable == "PK12ed") %>%
+  mutate(inf_adj_mill = inf_adj/1000000) %>% 
+  group_by(year) %>%  
+  arrange(year, -inf_adj_mill) %>%  
+  # assign ranking
+  mutate(rank = 1:n()) 
+
+## save the state order for the first year so the plot will be colored correctly 
+state_order <- ranked_by_year %>% 
+  filter(year == '1997') 
+state_order <- c(state_order$state)
+
+ranked_by_year_ordered <- ranked_by_year %>% 
+  mutate(state = factor(state, levels = state_order))
+  
+```
+
+Make the palette - need 51 colors
+```{r}
+my_palette <- futurevisions("grand_tour")
+more_pal <- colorRampPalette(my_palette)(51)
+show_col(more_pal)
+```
+
+Make the static plots for each year
+```{r}
+plot <-  ggplot(ranked_by_year_ordered) +  
+  aes(xmin = 0 ,  
+      xmax = inf_adj_mill)  +  
+  aes(ymin = rank - .45,  
+      ymax = rank + .45,  
+      y = rank) +  
+  facet_wrap(~ year) +  
+  geom_rect(alpha = .7) +  
+  aes(fill = state) +  
+  scale_fill_viridis_d(option = "magma",  
+                       direction = -1) +  
+   scale_x_continuous(  
+     limits = c(-20, 80),  
+     breaks = c(0, 20, 40, 60)) +  
+  geom_text(col = "gray13",  
+            hjust = "right",  
+            aes(label = state),  
+            x = -5) +  
+  scale_y_reverse() +  
+  labs(x = "Millions Dollars",
+       y = "",
+       caption = "Visualization by @JVerstaen",
+       title = "Government Spending on Public K-12 Education") +  
+  theme_ipsum_ps()+
+  theme(legend.position = "none",
+        plot.title = element_text(hjust = .5))
+```
+
+Animate and save it!
+```{r}
+
+animate <- plot +  
+  facet_null() +  
+  ## since this is the same scale its not super necessary
+  scale_x_continuous(  
+     limits = c(-20, 80),  
+     breaks = c(0, 20, 40, 60, 80)) +
+  geom_text(y = 1.5 , x = 30,
+            aes(label = as.character(year)),  
+            size = 6, col = "grey18", family = "IBM Plex Sans") +  
+  theme(axis.text.y=element_blank()) +
+  scale_fill_manual(values = more_pal)+
+  aes(group = state) +  
+  gganimate::transition_time(year) 
+
+animate(animate, fps = 3, height = 800, width =800)
+anim_save("visualizations/2020_09_15_govspend.gif")
+  
+```
+
+
+
+
+
+
+

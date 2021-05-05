@@ -1,0 +1,68 @@
+---
+title: "2021_05_04_water_sources"
+author: "Juliette Verstaen"
+date: "5/4/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(sf)
+library(rnaturalearth)
+library(mapview)
+
+land_lines <- ne_countries(country = "Ethiopia", scale = "medium", returnclass = "sf")
+
+water <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-05-04/water.csv')
+proj_crs <- '+proj=longlat +datum=WGS84'
+
+```
+
+Look at only ethiopia
+check to see if any of the points are overlapped
+map and a side graph (pir chart? bar graph) each year an
+
+```{r}
+
+ethiopia <- water %>% 
+  filter(country_name == "Ethiopia") %>% 
+  dplyr::select(lat_deg, lon_deg, report_date, water_source, status_id) %>% 
+  mutate(source_simple = case_when(str_detect(water_source, "Spring") ~ "Spring",
+                                   str_detect(water_source, "Well") ~ "Well",
+                                   str_detect(water_source, "Borehole") ~ "Borehole",
+                                   str_detect(water_source, "Surface Water") ~ "Surface",
+                                   str_detect(water_source, "Piped Water") ~ "Piped",
+                                   T ~ "Unknown")) %>% 
+  separate(report_date, c("month", "day", "year"), sep = "/") %>% 
+  select(lat_deg, lon_deg, source_simple) %>% 
+  unique() %>% 
+  st_as_sf(coords = c("lon_deg", "lat_deg"), crs = st_crs(proj_crs)) %>% 
+  st_intersection(land_lines)
+
+## should group by lat long and find uniwue because we don't want to overrepresent sites that are sampled multiple times
+
+my_col <- c("#dce9fc", "#9cd2f7", "#6290c8", "#376996", "#1f487e", "#1d3461")
+
+ggplot() +
+  geom_sf(data = land_lines, color =  "#E7AA7B", fill =  "#E7AA7B")+
+  geom_sf(data = ethiopia, aes(color = source_simple), alpha = 0.4, size = 0.5) + 
+  facet_wrap(vars(source_simple), nrow=2, ncol = 3) +
+  theme_void() +
+  labs(title = "Ethiopian Water Sources (1998-2020)") +
+  scale_color_manual(values = my_col) +
+  theme(legend.position = "none",
+        panel.background = element_rect(fill = "#140000", color = "#140000"),
+        plot.background = element_rect(fill = "#140000"),
+        plot.margin=unit(c(0,1,1,1),"cm"),
+        panel.spacing = unit(2, "lines"),
+        plot.title = element_text(face = "bold", color = "#E7AA7B", size = 20, hjust = 0.5,
+                                  margin=margin(15,0,30,0)),
+        strip.text = element_text(margin = margin(0,0,8,0),
+                                  colour = '#E7AA7B', face = "bold", size = 12, family = "Helvetica"))
+
+
+
+```
+

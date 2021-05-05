@@ -164,6 +164,6 @@ Put together and save
 ```{r final figure}
 combo <-  plot_1 + plot_2  
 
-ggsave("graphs/2020_08_04_eu_energy.jpg", width = 11, height = 13, dpi=300) 
+ggsave("visualizations/2020_08_04_eu_energy.jpg", width = 11, height = 13, dpi=300) 
 ```
 
