@@ -11,7 +11,13 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(sf)
 library(rnaturalearth)
-library(mapview)
+#library(mapview)
+library(extrafont)
+font_import()
+
+loadfonts(device = "pdf")
+
+#loadfonts(device = "win", quiet = TRUE)
 
 land_lines <- ne_countries(country = "Ethiopia", scale = "medium", returnclass = "sf")
 
@@ -50,19 +56,21 @@ ggplot() +
   geom_sf(data = ethiopia, aes(color = source_simple), alpha = 0.4, size = 0.5) + 
   facet_wrap(vars(source_simple), nrow=2, ncol = 3) +
   theme_void() +
-  labs(title = "Ethiopian Water Sources (1998-2020)") +
+  labs(title = "Water Sources in Ethiopia from 1998 to 2020") +
   scale_color_manual(values = my_col) +
   theme(legend.position = "none",
         panel.background = element_rect(fill = "#140000", color = "#140000"),
         plot.background = element_rect(fill = "#140000"),
         plot.margin=unit(c(0,1,1,1),"cm"),
         panel.spacing = unit(2, "lines"),
-        plot.title = element_text(face = "bold", color = "#E7AA7B", size = 20, hjust = 0.5,
+        plot.title = element_text(family = "Gulim", face = "bold", color = "#E7AA7B", size = 18, hjust = 0.5,
                                   margin=margin(15,0,30,0)),
-        strip.text = element_text(margin = margin(0,0,8,0),
-                                  colour = '#E7AA7B', face = "bold", size = 12, family = "Helvetica"))
+        strip.text = element_text(family = "Gulim", 
+                                  margin = margin(0,0,8,0),
+                                  colour = '#E7AA7B', face = "bold", size = 12))
 
 
+ggsave("visualizations/2021_05_04_water_sources.jpg", width = 10, height = 7, dpi=300)
 
 ```
 
