@@ -14,9 +14,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
 library(here)
-#library(friends)
+library(extrafont)
 library(cowplot)
-extrafont::loadfonts( quiet = T)
+extrafont::loadfonts(quiet = T)
 
 theme_set(hrbrthemes::theme_ipsum_rc(base_family = "Gabriel Weiss' Friends Font"))
 theme_update(panel.background = element_rect(fill = NA, color = NA),
@@ -42,7 +42,7 @@ friends_info_raw <- readr::read_csv('https://raw.githubusercontent.com/rfordatas
 
 Who's the most exclamation and inquisitive?
 ```{r}
-df <- friends_lines_raw %>% 
+friends_plot <- friends_lines_raw %>% 
   filter(speaker %in% c("Monica Geller", "Rachel Green", "Phoebe Buffay", "Ross Geller", "Chandler Bing", "Joey Tribbiani")) %>% 
   mutate(exclaim = str_count(text, "!"),
          quest = str_count(text, pattern = "\\?")) %>% 
@@ -64,8 +64,10 @@ df <- friends_lines_raw %>%
   ungroup()
   
   
-ggplot(df) +
-  geom_point(aes(x = season.ep, y = exclaimation, color = speaker)) +
+ggplot(friends_plot) +
+  geom_point(aes(x = season.ep, y = exclaimation, color = speaker)) 
+
++
   facet_grid(vars(speaker))
 
 ggplot(df) +
