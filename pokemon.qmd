@@ -1,0 +1,231 @@
+---
+title: "Pokemon Tidy Tuesday"
+format: html
+editor: visual
+---
+
+
+To Do:
+- work on the tufte style plot, some notes in there to remind me what I wanted to do
+- figure out a cool way to visualize the colors - if I want to include that
+- fine tune the number of pokemon IDed as each type plot
+- fine tune this plot (ggplot(pokemon_hw) +
+  geom_point(aes(x = hp, y = value, color = type_1))  +
+  #scale_color_viridis()  +
+  facet_wrap(vars(attribute)) +
+  geom_smooth(aes(x = hp, y = value), method=lm,se=TRUE,fullrange=TRUE, color = "gray78") 
+): figure out a way to make this information more platable to non stats audience
+
+
+```{r}
+library(tidyverse)
+library(ggiraph)
+library(viridis)
+library(ggthemes)
+
+pokemon_df <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2025/2025-04-01/pokemon_df.csv')
+```
+**Data Exploration Ideas:**
+
+- Does height and or height influence HP - can maybe do some simple stats here for practicing (titles: is bigger actually better?; good things come in small packages)
+- Can maybe have one overall all pokemon one and then plots separate by type?
+- Plot speed, height, weight and see if they are visually correlated
+- If infographic could be fun to have a largest and smallest pokemon with icons or photos
+- Ggirafe plot with pokemon number on x and then type on y and when you are close to one type group they all get highlighted - obviosuly not if static
+- Would be interesting to see how it changes over time, can add in vertical line in between ID numbers where new releases happened 
+
+## maybe do some linear model 
+```{r}
+ggplot(pokemon_df) +
+  geom_point(aes(x = height, y = weight))
+
+ggplot(pokemon_df) +
+  geom_point(aes(x = speed, y = weight))
+
+ggplot(pokemon_df) +
+  geom_point(aes(x = speed, y = height))
+
+ggplot(pokemon_df) +
+  geom_boxplot(aes(x = speed, y = type_1))
+
+ggplot(pokemon_df) +
+  geom_point(aes(y = type_1, x = base_experience))+
+  geom_boxplot(aes(y = type_1, x = base_experience))
+
+ggplot(pokemon_df) +
+  geom_point(aes(y = type_1, x = hp))+
+  geom_boxplot(aes(y = type_1, x = hp))
+
+```
+
+## use ggirafe to see which ones are the outliers, low and high ends
+
+
+## Do Pokemon with 2 types have higher HP
+
+```{r}
+pokemon_2 <- pokemon_df %>% 
+  mutate(type_count = ifelse(is.na(type_2), "two", "one"))
+
+ggplot(pokemon_2) +
+  geom_bar(aes(x= hp, fill = type_count))
+
+ggplot(pokemon_2) +
+  geom_point(aes(x= hp, y = type_count)) +
+  geom_boxplot(aes(x= hp, y = type_count))
+```
+
+What are the most common second type
+
+```{r}
+t1_df <- as.data.frame(table(pokemon_df$type_1)) %>% 
+  rename(type = Var1, counts = Freq) %>% 
+  mutate(which_type = "Primary Type") 
+
+t2_df <- data.frame(table(pokemon_df$type_2)) %>% 
+  rename(type = Var1, counts = Freq)%>% 
+  mutate(which_type = "Secondary Type") 
+
+type_n <- rbind(t1_df, t2_df)
+
+order <- type_n %>% 
+  filter(which_type == "Primary Type") %>% 
+  arrange(counts) %>% 
+  pull(type)
+
+
+ggplot(type_n) +
+  geom_bar(aes(y = factor(type, levels = order), x = counts, fill = which_type), stat = "identity",
+           position = position_stack(reverse = TRUE)) +
+  labs(y = "",
+       x = "Number of Pokemon") +
+  theme_minimal()
+
+```
+
+With this plot I could so some writing too. "There are 949 total Pokemon. Each has a primary type, but only 53.7% of them have a secondary type as well.
+
+```{r}
+length(unique(pokemon_df$pokemon))
+colSums(is.na(pokemon_df))
+(949-439)/949
+```
+
+## Let's look at how hp of pokemons has changed over time
+```{r}
+pokemon_gens <- pokemon_df %>% 
+  mutate(generation = case_when(id >=1 & id <= 151 ~ "generation 1",
+                                id >= 152 & id <= 251 ~ "generation 2",
+                                id >= 252 & id <= 386 ~ "generation 3",
+                                id >= 387 & id <= 493 ~ "generation 4",
+                                id >= 494 & id <= 649 ~ "generation 5",
+                                id >= 650 & id <= 721 ~ "generation 6",
+                                id >= 722 & id <= 809 ~ "generation 7",
+                                id >= 810 & id <= 905 ~ "generation 8",
+                                id >= 906 & id <= 1025 ~ "generation 9",
+                                T ~ NA)) %>% 
+  filter(!is.na(generation)) %>% 
+  mutate() ## calculate the mean of each generation group and then plot that as a line over it
+
+ggplot(pokemon_gens) +
+  geom_point(aes(x = id, y = hp, color = generation)) +
+  geom_boxplot(aes(x = id, y = hp, color = generation))
+
+theme_set(theme_tufte()) 
+ggplot(pokemon_gens) +
+  geom_tufteboxplot(aes(x = id, y = hp,  color = generation)) ## can I color code by range?? like like progressiv change, wider - dark blue and narrower = light blue
+
+## need to figure out how to group by generation and then calculate the range for each 
+
+```
+
+
+Multiple linear regression models 
+for attack, defense, and speed
+
+```{r}
+fit_attack <- lm(attack ~ height + weight, data = pokemon_df)
+summary(fit_attack)
+
+fit_defense <- lm(defense ~ height + weight, data = pokemon_df)
+summary(fit_defense)
+
+fit_speed <- lm(speed ~ height + weight, data = pokemon_df)
+summary(fit_speed)
+
+
+pokemon_hw <- pokemon_df %>% 
+  mutate(height_weight = height*weight) %>% 
+  pivot_longer(cols=10:14) %>% 
+  rename(attribute = name)
+
+ggplot(pokemon_hw) +
+  geom_point(aes(x = value, y = height_weight, color = type_1))  +
+  #scale_color_viridis()  +
+  facet_wrap(vars(attribute)) +
+  geom_smooth(aes(x = value, y = height_weight), method=lm,se=TRUE,fullrange=TRUE, color = "gray78") 
+
+```
+
+Might be fun to pull out the biggest one (height and weight) that has the lowest score, bigest with the highest score, and then same for the small one. Have their icons arranged in a way that shows them next to each other.
+
+
+Does the level of the attribute affect the HP? Which one is the most important?
+```{r}
+
+## HP vs attributes
+ggplot(pokemon_hw) +
+  geom_point(aes(x = value, y = hp, color = type_1))  +
+  #scale_color_viridis()  +
+  facet_wrap(vars(attribute)) +
+  geom_smooth(aes(x = value, y = hp), method=lm,se=TRUE,fullrange=TRUE, color = "gray78") 
+
+
+ggplot(pokemon_hw) +
+  geom_point(aes(x = hp, y = value, color = type_1))  +
+  #scale_color_viridis()  +
+  facet_wrap(vars(attribute)) +
+  geom_smooth(aes(x = hp, y = value), method=lm,se=TRUE,fullrange=TRUE, color = "gray78") 
+
+
+## does type affect HP?
+ggplot(pokemon_hw) +
+  geom_point(aes(x = hp, y = value, color = attribute))  +
+  #scale_color_viridis()  +
+  facet_wrap(vars(type_1)) 
+
+```
+
+
+
+Think of the story - figure out if there are any that would be cool to pull our and highlight, maybe the ones that were 
+
+
+Looking at the colors for fun
+```{r}
+cols_1 <- unique(pokemon_df$color_1)
+
+cols_types <- pokemon_df %>% 
+  group_by(type_1, color_1) %>% 
+  summarize(ty_co_combo = n())
+
+ggplot(cols_types) +
+  geom_bar(aes(x = ty_co_combo, y = type_1, fill = color_1), stat = "identity", position="fill") +
+  scale_fill_identity() +
+  theme_minimal()
+
+#c("fighting", "fire", "electric", )
+
+```
+
+Same idea but with a bubble plot
+
+
+Maybe spend some time to organize these in rainbow order :) - maybe use the colors for the pokemon type in other plots
+
+
+
+
+
+
+
