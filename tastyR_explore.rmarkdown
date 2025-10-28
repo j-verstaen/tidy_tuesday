@@ -1,0 +1,34 @@
+---
+title: "butter"
+format: html
+editor: source
+---
+
+```{r}
+library(tidyverse)
+library(tastyR)
+rec <- allrecipes
+```
+
+```{r}
+butter <- allrecipes %>% 
+  mutate(butter = ifelse(str_detect(ingredients, "butter|Butter"), "yes", "no")) %>% 
+  dplyr::select(name, date_published, ingredients, avg_rating, total_ratings, servings, butter) %>% 
+   separate_wider_delim(cols = ingredients, delim = ",", names_sep = "_", too_few = "align_start") %>% 
+   rowwise() %>%
+  mutate(butter_ingredient = {
+    ingredients <- c_across(starts_with("ingredients_"))
+    butter_match <- ingredients[grepl("butter", ingredients, ignore.case = TRUE)]
+    if(length(butter_match) > 0) butter_match[1] else NA_character_
+  }) %>%
+  ungroup() %>% 
+  dplyr::select(-(3:48)) %>% 
+  mutate(butter = ifelse(str_detect(butter_ingredient, "peanut butter|Peanut Butter|buttermilk|butter lettuce|vegan butter|Buttery|buttery|butternut|butterhead|butter beans|butterscotch|Butterball|butterflied|bread and butter pickle chips|butter flavored|buttercream|pumpkin butter|Nutter Butter|apple butter|almond butter|vegan"), "no", butter),
+         butter_ingredient = ifelse(butter == "no", NA, butter_ingredient),
+         butter_ingredient = ifelse(name =="Orange, Tea, Bourbon-Brined Paprika Butter Turkey", "6 tablespoons butter",butter_ingredient))
+  
+  
+  
+
+```
+

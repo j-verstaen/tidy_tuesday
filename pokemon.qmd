@@ -6,7 +6,7 @@ editor: visual
 
 
 To Do:
-- work on the tufte style plot, some notes in there to remind me what I wanted to do
+- make the bar plot with the primary and second type circles with two colors for each type and size is the total numbe realive to others
 - figure out a cool way to visualize the colors - if I want to include that
 - fine tune the number of pokemon IDed as each type plot
 - fine tune this plot (ggplot(pokemon_hw) +
@@ -15,6 +15,8 @@ To Do:
   facet_wrap(vars(attribute)) +
   geom_smooth(aes(x = hp, y = value), method=lm,se=TRUE,fullrange=TRUE, color = "gray78") 
 ): figure out a way to make this information more platable to non stats audience
+- "while XX is the smallest pokemon, they pack a big punch" - plot with just that pokemon point highlighted, and then an opposite exmaple with the point highlighted in the same plot
+- "Many new generations of pokemon have been introduced since XXXX" this is where teh HP plot can come in. maybe include numbers for how many in each generation? next to the simple Tuft plot. " the HP range narrowing with each generation, until gen 7" 
 
 
 ```{r}
@@ -22,6 +24,10 @@ library(tidyverse)
 library(ggiraph)
 library(viridis)
 library(ggthemes)
+library(extrafont)
+loadfonts(device = "all")
+library(here)
+
 
 pokemon_df <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2025/2025-04-01/pokemon_df.csv')
 ```
@@ -113,6 +119,10 @@ colSums(is.na(pokemon_df))
 
 ## Let's look at how hp of pokemons has changed over time
 ```{r}
+
+colours <- c("black", "#ee1515")
+colour_breaks <- c(85, 170, 255)
+
 pokemon_gens <- pokemon_df %>% 
   mutate(generation = case_when(id >=1 & id <= 151 ~ "generation 1",
                                 id >= 152 & id <= 251 ~ "generation 2",
@@ -125,20 +135,39 @@ pokemon_gens <- pokemon_df %>%
                                 id >= 906 & id <= 1025 ~ "generation 9",
                                 T ~ NA)) %>% 
   filter(!is.na(generation)) %>% 
-  mutate() ## calculate the mean of each generation group and then plot that as a line over it
+  group_by(generation) %>% 
+  mutate(min_hp = min(hp),
+         max_hp = max(hp)) %>% 
+  ungroup() %>% 
+  mutate(range = max_hp-min_hp) 
+
+
 
 ggplot(pokemon_gens) +
   geom_point(aes(x = id, y = hp, color = generation)) +
   geom_boxplot(aes(x = id, y = hp, color = generation))
 
 theme_set(theme_tufte()) 
-ggplot(pokemon_gens) +
-  geom_tufteboxplot(aes(x = id, y = hp,  color = generation)) ## can I color code by range?? like like progressiv change, wider - dark blue and narrower = light blue
+gen_plot <- ggplot(pokemon_gens) +
+  geom_tufteboxplot(aes(x = id, y = hp, group = generation, color = range), size = 4) + ## can I color code by range?? like like progressiv change, wider - dark blue and narrower = light blue
+  coord_flip() +
+  scale_x_reverse() +
+  scale_colour_gradientn(
+limits  = range(pokemon_gens$hp),
+    colours = colours[c(1, seq_along(colours), length(colours))],
+    values  = c(0, scales::rescale(colour_breaks, from = range(pokemon_gens$hp))), 1) +
+  theme_void()+
+  theme(legend.position = "none")
+  # theme(text=element_text(size=10, 
+  #                         family = "Sans"))
+ # geom_text(aes(x = id, y = hp), label = pokemon_gens$generation)
+  
 
-## need to figure out how to group by generation and then calculate the range for each 
+ggsave(plot = gen_plot, filename = here::here("visualizations/2025_04_18_pokemon/generation_range.png"), dpi = 300, bg = "transparent")
+
 
 ```
-
+in inkspace make the dots pokeballs :)
 
 Multiple linear regression models 
 for attack, defense, and speed
