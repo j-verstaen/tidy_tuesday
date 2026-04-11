@@ -1,0 +1,108 @@
+---
+title: "Total recipes by author and butter used summary statistics"
+format: html
+---
+
+```{r}
+library(tidyverse)
+butter <- read_csv(here::here("butter/data/recipes_butter.csv"))
+```
+
+```{r}
+buttered_author <- just_butter %>% 
+  mutate(author = ifelse(author == 	"thedailygourmet", "TheDailyGourmet", author)) %>% 
+  group_by(author) %>% 
+  summarize(mean = mean(butter_per_serving, na.rm = TRUE),
+            min = min(butter_per_serving, na.rm = TRUE),
+            max = max(butter_per_serving, na.rm = TRUE),
+            total_recipes = as.numeric(n())) %>% 
+  ungroup() %>% 
+  arrange(desc(total_recipes))
+
+binned_buttered_author <- buttered_author %>% 
+  group_by(total_recipes) %>% 
+  summarize(n_authors = n()) %>% 
+  ungroup()
+
+author_n <- buttered_author %>% 
+  dplyr::select(author, total_recipes)
+
+auth_butt_sum <- left_join(just_butter, author_n, by = "author") %>% 
+  group_by(total_recipes) %>% 
+  summarize(mean = mean(butter_per_serving, na.rm = TRUE),
+            min = min(butter_per_serving, na.rm = TRUE),
+            max = max(butter_per_serving, na.rm = TRUE)) %>% 
+  ungroup()
+
+# if you have 20 recipes or more than you get your name and if not then you get x number of authors
+
+twenty <- buttered_author %>% 
+  filter(total_recipes >= 20)
+
+author_recipe_counts <- buttered_author %>%
+  group_by(total_recipes) %>%
+  summarize(author_summary = if (first(total_recipes) < 20) {
+    as.character(n())
+    } else if (n() == 1) {
+      # Single author name
+      first(author)
+    } else if (n() == 2) {
+      # Two authors: "Author 1 & Author 2"
+      paste(author, collapse = " & ")
+    } else {
+      # Three or more: "Author 1, Author 2, & Author 3"
+      paste0(paste(head(author, -1), collapse = ", "), ", & ", last(author))},
+    .groups = 'drop') %>%
+  mutate(author_summary = case_when(total_recipes <20 & author_summary == "1" ~ paste0(author_summary, " author"),
+                                    total_recipes <20 & author_summary != "1"~ paste0(author_summary, " authors"),
+                                    T ~author_summary)) %>% 
+  group_by(author_summary) %>%
+  mutate(plot_label = paste0(strrep(" ", row_number() - 1), author_summary)) %>%
+  ungroup() %>% 
+  arrange(desc(total_recipes)) %>% 
+  left_join(auth_butt_sum)
+
+```
+
+```{r}
+# Your multiplier: 280 Max Recipes / 8 Max Butter = 35
+mult <- 35 
+
+ggplot(author_recipe_counts, aes(x = plot_label)) +
+  geom_col(aes(x = reorder(plot_label, total_recipes), y = total_recipes), fill = "#FDEC80")+
+  geom_point(aes(y = mean * mult), color ="#000080",  size = 2) +
+  geom_point(aes(y = min * mult), color ="#000080", size = 2) +
+  geom_point(aes(y = max * mult), color ="#000080", size = 2) +
+  scale_y_continuous(name = "Total number of recipes",
+                     sec.axis = sec_axis(~ . / mult, name = "Least, average, and most tablespoons butter per serving")) +
+  coord_flip() +
+  theme_minimal() +
+theme(
+    axis.title.x.top = element_text(color = "#000080", face = "bold"),
+    axis.text.x.top = element_text(color = "#000080"),    # Colors the numbers at the top
+    axis.ticks.x.top = element_line(color = "#000080"), # Colors the tick marks at the top
+    axis.title.x.bottom = element_text(color = "#FDEC80", face = "bold"),
+    axis.text.x.bottom = element_text(color = "#FDEC80"), # Colors the numbers at the bottom
+    axis.ticks.x.bottom = element_line(color = "#FDEC80"),# Colors the tick marks at the bottom
+    axis.text.y = element_text(color = "black"),
+    axis.title.y = element_blank(),
+    # panel.background is the area behind the bars
+    panel.background = element_rect(fill = "gray50", color = NA),
+    # plot.background is the entire image area including the labels
+    plot.background = element_rect(fill = "gray50", color = NA),
+    )
+  
+```
+
+
+
+
+
+
+
+
+
+
+
+
+

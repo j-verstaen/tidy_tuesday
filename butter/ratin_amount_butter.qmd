@@ -1,0 +1,125 @@
+---
+title: "plots"
+format: html
+---
+
+```{r}
+library(tidyverse)
+#devtools::install_github("LKremer/ggpointdensity")
+library(ggpointdensity)
+butter <- read_csv(here::here("butter/data/recipes_butter.csv"))
+just_butter <- butter %>% filter(butter == "yes")
+
+```
+
+
+
+```{r}
+ggplot(just_butter) +
+  geom_vline(aes(xintercept = mean(avg_rating, na.rm = TRUE)), color = "#dda15e", size = 0.7, alpha = 0.5)+
+  geom_hline(aes(yintercept = mean(butter_per_serving, na.rm = TRUE)), color = "#dda15e", size = 0.7, alpha = 0.5) +
+  geom_point(aes(y = butter_per_serving, x = avg_rating), alpha = 0.7, color = "#000080", size = 2) +
+  theme_minimal()+
+  labs(y = "Average Recipe Rating",
+       x = "Tablespoons Butter per Serving")
+```
+
+```{r}
+ggplot(just_butter, aes(x = avg_rating, y = butter_per_serving)) +
+    # --- YOUR SUMMARY LINES ---
+  geom_vline(aes(xintercept = mean(avg_rating, na.rm = TRUE)), color = "#dda15e", size = 0.7, alpha = 0.8) +
+  geom_hline(aes(yintercept = mean(butter_per_serving, na.rm = TRUE)), color = "#dda15e", size = 0.7, alpha = 0.8) +
+  
+  # Use after_stat(n) for color so it matches the size count
+  geom_count(aes(color = after_stat(n)), alpha = 0.7) +
+  
+  # --- THE MERGE STEP ---
+  # Both must have the EXACT SAME name
+  scale_size_continuous(name = "Number of\nObservations") +
+  scale_color_viridis_c(name = "Number of\nObservations") + 
+  
+
+  theme_minimal() +
+  labs(y = "Average Recipe Rating", x = "Tablespoons Butter per Serving")
+ 
+```
+
+```{r}
+library(showtext)
+library(systemfonts)
+
+# Updated to use match_fonts() per the warning
+font_path <- systemfonts::match_fonts("Segoe UI")$path
+
+# Register the font
+font_add(family = "segoe", regular = font_path)
+
+# Start the rendering engine
+showtext_auto()
+
+# Lightest to Darkest
+yellow_pal <- c(
+  "#f4e9af", # Low Density (Lightest Cream)
+  "#f9dc5c", # Bright Creamy Yellow
+  "#f4d35e", # Classic Butter
+  "#e9c46a", # Sunflower Yellow
+  "#d4a017", # Bright Gold
+  "#b5651d"  # High Density (Rich Amber)
+)
+
+blue_pal <- c(
+  "#102a81", # Your Deepest Navy (Base)
+  "#0473c2", # Your Mid-Blue
+  "#0092ff", # Ocean Blue
+  "#5dbfff", # Sky Blue
+  "#b0e0ff", # Soft Pastel Blue
+  "#e3f4ff"  # Icy White-Blue (Brightest Highlight)
+)
+
+ggplot(data = just_butter, mapping = aes(x = avg_rating, y = butter_per_serving)) +
+  geom_pointdensity(size = 5) +
+  scale_color_gradientn(colors = yellow_pal) +
+  theme_minimal() +
+  theme(text = element_text(family = "segoe", color = "#f4e9af"),
+        axis.text = element_text(family = "segoe", color = "#f4e9af"),
+        axis.title = element_text(family = "segoe", color = "#f4e9af", face = "bold"),
+        panel.background = element_rect(fill = "#112e62", color = NA), 
+        plot.background = element_rect(fill = "#112e62", color = NA),
+        panel.grid.major = element_line(color = "#001d3d"),
+        panel.grid.minor = element_line(color = "#112e62"))
+
+p <- ggplot(data = just_butter, mapping = aes(y = avg_rating, x = butter_per_serving)) +
+  geom_pointdensity(size = 2) +
+  scale_color_gradientn(colors = blue_pal) +
+  theme_minimal() +
+  theme(text = element_text(family = "segoe", color = "#112e62"),
+        axis.text = element_text(family = "segoe", color = "#112e62"),
+        axis.title = element_text(family = "segoe", color = "#112e62", face = "bold"),
+        panel.background = element_rect(fill = "#faf6c3", color = NA), 
+        plot.background = element_rect(fill = "#faf6c3", color = NA),
+        panel.grid.major = element_line(color = "#112e62"),
+        panel.grid.minor = element_line(color = "#faf6c3")) +
+        # panel.grid.major.y = element_blank(),
+        # panel.grid.minor.y = element_blank()) +
+  labs(y = "Average Rating",
+       x = "tbsp") +
+  scale_x_continuous(breaks = seq(0, 8, by = 1))
+p
+ggsave(p, filename = here::here("butter/outputs/butter_point_density.svg"), width = 4.8, height = 1.3)
+ggsave(p, filename = here::here("butter/outputs/butter_point_density.png"), width = 4.8, height = 1.3)
+```
+
+
+in inkspace make the lines in plot not all the way - make them the way they would be on a stick on butter
+- have the title be in all caps and bold like BUTTER - look to see waht it looks like and style the same
+
+
+will add an arros and label for the most butter per serving
+will add arrow for lease butter per serving
+Add a numer of plot for total recipes included here
+
+
+
+
+
+

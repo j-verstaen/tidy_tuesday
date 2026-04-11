@@ -1,0 +1,108 @@
+---
+title: "plots"
+format: html
+---
+
+```{r}
+library(tidyverse)
+butter <- read_csv(here::here("butter/data/recipes_butter.csv"))
+```
+
+Plot Ideas:
+- what recipe has the most butter, which one has the least
+- is more butter (per serving) better?
+- how many recipes had butter
+- are butter forward recipe published more in the winter season?
+- has the number of recipes with butter increased or decreased over time (look at recipes with and without)
+- has the amount of butter used in recipes decreased over time (in just recipes with butter)
+- which author is the most butter forward
+- distribution of recipes ratings with and without butter, two plots
+- something with the total number of other ingredients, do recipes without butter have more or less total ingredients than those without
+- there will probably be something with dessert vs meals IDK what yet though
+
+
+- Color coded for above or below average for amount of butter
+- maybe like the stacked chart of circles I saved in my pins and bin the ratings and color coordinate the amount of butter, below can be a gradient of one color and above and below another color
+
+
+Basic
+```{r}
+hist(butter$tablespoons)
+
+just_butter <- butter %>% 
+  filter(tablespoons > 0)
+
+ggplot(just_butter) +
+  geom_point(aes(x=avg_rating, y = butter_per_serving))
+
+ggplot(just_butter) +
+  geom_bar(aes(x=avg_rating, y = butter_per_serving), stat = "identity")
+```
+
+
+
+
+
+```{r}
+
+
+just_butter_counts <- left_join(just_butter, buttered_author, by = "author")
+
+max_recipes <- max(just_butter_counts$total_recipes, na.rm = TRUE)
+max_butter <- max(just_butter_counts$butter_per_serving, na.rm = TRUE)
+scaler <- max_recipes / max_butter
+
+ggplot(just_butter_counts, aes(y = author)) +
+  # 1. The Bars (placed first so they are "behind")
+  # We multiply the count by the scaler to fit the butter axis
+  geom_col(aes(x = total_recipes * scaler), 
+           fill = "gray90", color = NA) + 
+  geom_point(aes(x = butter_per_serving), 
+             alpha = 0.6, color = "black") +
+  scale_x_continuous(
+    name = "Butter per Serving",
+    sec.axis = sec_axis(~ . / scaler, name = "Total Number of Recipes")
+  ) +
+  theme_minimal() +
+  theme(axis.text.y = element_text(size = 6)) # Shrink text if you have many authors
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Does an increase in butter per serving increase the rating (stats)
+```{r}
+lm_per_serv <- lm(avg_rating~butter_per_serving, data=just_butter)
+summary(lm_per_serv)
+
+lm_per_recipe <- lm(avg_rating~tablespoons, data=just_butter)
+summary(lm_per_recipe)
+
+
+spearman_test <- cor.test(just_butter$butter_per_serving, just_butter$avg_rating,
+                          method = "spearman")
+print(spearman_test) ## p-value is significant, the butter per serving does significantly impact the average rating of the recipe
+
+rho_val <- spearman_test$estimate
+
+ggplot(just_butter, aes(x = butter_per_serving, y = avg_rating)) +
+  geom_point(alpha = 0.5) +  # Alpha helps if points overlap
+  geom_smooth(method = "lm", color = "blue") +
+  labs(title = "Relationship between Butter and Rating",
+       subtitle = paste("Spearman's ρ =", round(rho_val, 3)),
+       x = "Butter per Serving",
+       y = "Average Rating")
+```
